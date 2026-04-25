@@ -1,7 +1,7 @@
 import { decryptCookieData } from './crypto';
 
 // Note: Ensure the Vercel backend URL is correct
-const API_URL = 'http://localhost:3000/api/get-session';
+const API_URL = 'https://universeai-extention.vercel.app/api/get-session';
 
 chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => {
   if (message.type === 'SYNC_SESSION') {
@@ -20,7 +20,7 @@ chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.Mess
         return;
       }
 
-      fetch('http://localhost:3000/api/get-sessions-list', {
+      fetch('https://universeai-extention.vercel.app/api/get-sessions-list', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
         .then(async (res) => {
