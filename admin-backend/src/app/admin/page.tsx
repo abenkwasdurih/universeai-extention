@@ -50,8 +50,13 @@ export default function AdminDashboard() {
     if (res.ok) {
       const { data } = await res.json();
       setCategories(data);
-      if (data.length > 0 && !category) {
-        setCategory(data[0].name);
+      if (data.length > 0) {
+        // If no category is selected, or the currently selected category no longer exists
+        if (!category || !data.some((c: any) => c.name === category)) {
+          setCategory(data[0].name);
+        }
+      } else {
+        setCategory('');
       }
     }
   };
@@ -84,6 +89,12 @@ export default function AdminDashboard() {
       setSiteName('');
       setDomain('');
       setCookiesJson('');
+      setUiConfigStr('{"hiddenSelectors": [".premium-banner"]}');
+      if (categories.length > 0) {
+        setCategory(categories[0].name);
+      } else {
+        setCategory('');
+      }
     } else {
       alert('Error saving session');
     }
@@ -319,7 +330,8 @@ export default function AdminDashboard() {
                           <td className="py-4 text-right space-x-3">
                             <button
                               onClick={() => {
-                                setCategory(session.category || '');
+                                const catExists = categories.some(c => c.name === session.category);
+                                setCategory(catExists ? (session.category || '') : (categories.length > 0 ? categories[0].name : ''));
                                 setSiteName(session.siteName);
                                 setDomain(session.domain);
                                 setUiConfigStr(JSON.stringify(session.uiConfig || {}));

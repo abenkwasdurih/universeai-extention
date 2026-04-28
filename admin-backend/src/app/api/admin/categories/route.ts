@@ -58,6 +58,17 @@ export async function DELETE(request: Request) {
     const { id } = await request.json();
     if (!id) return NextResponse.json({ error: 'ID is required' }, { status: 400 });
 
+    const [categoryToDelete] = await db.select().from(categories).where(eq(categories.id, id));
+    
+    if (categoryToDelete) {
+      // Update all sessions using this category to 'Uncategorized'
+      // Need to import sharedSessions from schema
+      const { sharedSessions } = await import('@/db/schema');
+      await db.update(sharedSessions)
+        .set({ category: 'Uncategorized' })
+        .where(eq(sharedSessions.category, categoryToDelete.name));
+    }
+
     await db.delete(categories).where(eq(categories.id, id));
     return NextResponse.json({ success: true });
   } catch (error) {
