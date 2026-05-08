@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
+import { API_ENDPOINTS } from './config';
 
 const colors = {
   bg: '#f8f9fa',
@@ -54,7 +55,7 @@ function Popup() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch('https://universeai-extention.vercel.app/api/extension/login', {
+      const res = await fetch(API_ENDPOINTS.extensionLogin, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),

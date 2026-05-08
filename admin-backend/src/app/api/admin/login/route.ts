@@ -9,16 +9,20 @@ export async function POST(request: Request) {
 
     if (password === ADMIN_PASSWORD) {
       const token = await encryptJWT({ role: 'admin' });
-      
+
+      // Auto-detect if the request is HTTPS (supports proxy headers from Coolify/Traefik)
+      const forwardedProto = request.headers.get('x-forwarded-proto');
+      const isHttps = forwardedProto === 'https' || new URL(request.url).protocol === 'https:';
+
       const response = NextResponse.json({ success: true });
       response.cookies.set('admin_token', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        secure: isHttps,
+        sameSite: 'lax',
         maxAge: 86400, // 1 day
         path: '/',
       });
-      
+
       return response;
     }
 
