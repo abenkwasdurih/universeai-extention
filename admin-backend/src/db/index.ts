@@ -1,7 +1,17 @@
-import { neon } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
 import * as schema from './schema';
 
-// Will fallback to a dummy string if not provided, just to avoid crashing during build
-const sql = neon(process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost/postgres');
-export const db = drizzle(sql, { schema });
+const connectionString =
+  process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost/postgres';
+
+// Configure TLS based on URL. Self-hosted PostgreSQL typically has no TLS,
+// while managed services (Neon, Supabase) require it.
+const needsSSL = /sslmode=require|neon\.tech|supabase\.co/.test(connectionString);
+
+const client = postgres(connectionString, {
+  ssl: needsSSL ? 'require' : false,
+  max: 10, // connection pool size
+});
+
+export const db = drizzle(client, { schema });
