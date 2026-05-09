@@ -75,3 +75,45 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
+
+export async function PATCH(request: Request) {
+  if (!(await isAuthenticated())) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    const { id, name, iconUrl } = await request.json();
+    if (!id) return NextResponse.json({ error: 'ID is required' }, { status: 400 });
+    if (!name || typeof name !== 'string' || name.trim() === '') {
+      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+    }
+
+    const trimmedName = name.trim();
+    const [existing] = await db.select().from(categories).where(eq(categories.id, id));
+    if (!existing) {
+      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
+    }
+
+    // If name changed, cascade-update shared_sessions.category
+    if (existing.name !== trimmedName) {
+      const { sharedSessions } = await import('@/db/schema');
+      await db
+        .update(sharedSessions)
+        .set({ category: trimmedName })
+        .where(eq(sharedSessions.category, existing.name));
+    }
+
+    await db
+      .update(categories)
+      .set({ name: trimmedName, iconUrl: iconUrl?.trim() || null })
+      .where(eq(categories.id, id));
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    if (error.code === '23505') {
+      return NextResponse.json({ error: 'Another category already uses this name' }, { status: 400 });
+    }
+    console.error('PATCH /api/admin/categories error:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}

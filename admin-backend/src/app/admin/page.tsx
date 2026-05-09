@@ -22,6 +22,10 @@ export default function AdminDashboard() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryIcon, setNewCategoryIcon] = useState('');
   const [loadingCategory, setLoadingCategory] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
+  const [editCategoryName, setEditCategoryName] = useState('');
+  const [editCategoryIcon, setEditCategoryIcon] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
 
   useEffect(() => {
     fetchSessions();
@@ -148,6 +152,45 @@ export default function AdminDashboard() {
     } else {
       alert('Error deleting category');
     }
+  };
+
+  const handleStartEditCategory = (cat: any) => {
+    setEditingCategoryId(cat.id);
+    setEditCategoryName(cat.name);
+    setEditCategoryIcon(cat.iconUrl || '');
+  };
+
+  const handleCancelEditCategory = () => {
+    setEditingCategoryId(null);
+    setEditCategoryName('');
+    setEditCategoryIcon('');
+  };
+
+  const handleSaveEditCategory = async (id: number) => {
+    if (!editCategoryName.trim()) {
+      alert('Category name cannot be empty');
+      return;
+    }
+    setSavingEdit(true);
+    const res = await fetch('/api/admin/categories', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id,
+        name: editCategoryName.trim(),
+        iconUrl: editCategoryIcon.trim(),
+      }),
+    });
+
+    if (res.ok) {
+      handleCancelEditCategory();
+      fetchCategories();
+      fetchSessions(); // Cascade updates may have changed session categories
+    } else {
+      const data = await res.json();
+      alert(data.error || 'Error updating category');
+    }
+    setSavingEdit(false);
   };
 
   const handleAddUser = async (e: React.FormEvent) => {
@@ -405,33 +448,97 @@ export default function AdminDashboard() {
             <div className="lg:col-span-2 space-y-6">
               <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
                 <h2 className="text-xl font-semibold mb-4">Existing Categories</h2>
+                <p className="text-xs text-zinc-500 mb-4">
+                  Click <span className="text-indigo-400">Edit</span> to update name or icon URL. Renaming cascades to all sessions using this category.
+                </p>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
                     <thead>
                       <tr className="border-b border-zinc-800 text-zinc-400 text-sm">
-                        <th className="pb-3 font-medium">Name</th>
+                        <th className="pb-3 font-medium">Name & Icon</th>
                         <th className="pb-3 font-medium text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-800">
                       {categories.map((cat) => (
                         <tr key={cat.id} className="text-sm">
-                          <td className="py-4 text-zinc-100 font-medium flex items-center space-x-3">
-                            {cat.iconUrl ? (
-                              <img src={cat.iconUrl} alt={cat.name} className="w-5 h-5 object-contain" />
-                            ) : (
-                              <div className="w-5 h-5 bg-zinc-800 rounded" />
-                            )}
-                            <span>{cat.name}</span>
-                          </td>
-                          <td className="py-4 text-right">
-                            <button
-                              onClick={() => handleDeleteCategory(cat.id)}
-                              className="text-red-400 hover:text-red-300 text-sm font-medium"
-                            >
-                              Delete
-                            </button>
-                          </td>
+                          {editingCategoryId === cat.id ? (
+                            <>
+                              <td className="py-4">
+                                <div className="flex items-center space-x-3">
+                                  {editCategoryIcon ? (
+                                    <img
+                                      src={editCategoryIcon}
+                                      alt="preview"
+                                      className="w-5 h-5 object-contain flex-shrink-0"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).style.display = 'none';
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="w-5 h-5 bg-zinc-800 rounded flex-shrink-0" />
+                                  )}
+                                  <div className="flex-1 space-y-2">
+                                    <input
+                                      type="text"
+                                      value={editCategoryName}
+                                      onChange={(e) => setEditCategoryName(e.target.value)}
+                                      className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500"
+                                      placeholder="Category name"
+                                    />
+                                    <input
+                                      type="url"
+                                      value={editCategoryIcon}
+                                      onChange={(e) => setEditCategoryIcon(e.target.value)}
+                                      className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs font-mono focus:ring-2 focus:ring-indigo-500"
+                                      placeholder="Icon URL (optional)"
+                                    />
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-4 text-right space-x-3 align-top">
+                                <button
+                                  onClick={() => handleSaveEditCategory(cat.id)}
+                                  disabled={savingEdit}
+                                  className="text-emerald-400 hover:text-emerald-300 text-sm font-medium disabled:opacity-50"
+                                >
+                                  {savingEdit ? 'Saving...' : 'Save'}
+                                </button>
+                                <button
+                                  onClick={handleCancelEditCategory}
+                                  disabled={savingEdit}
+                                  className="text-zinc-400 hover:text-zinc-300 text-sm font-medium disabled:opacity-50"
+                                >
+                                  Cancel
+                                </button>
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="py-4 text-zinc-100 font-medium flex items-center space-x-3">
+                                {cat.iconUrl ? (
+                                  <img src={cat.iconUrl} alt={cat.name} className="w-5 h-5 object-contain" />
+                                ) : (
+                                  <div className="w-5 h-5 bg-zinc-800 rounded" />
+                                )}
+                                <span>{cat.name}</span>
+                              </td>
+                              <td className="py-4 text-right space-x-3">
+                                <button
+                                  onClick={() => handleStartEditCategory(cat)}
+                                  className="text-indigo-400 hover:text-indigo-300 text-sm font-medium"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteCategory(cat.id)}
+                                  className="text-red-400 hover:text-red-300 text-sm font-medium"
+                                >
+                                  Delete
+                                </button>
+                              </td>
+                            </>
+                          )}
                         </tr>
                       ))}
                       {categories.length === 0 && (
